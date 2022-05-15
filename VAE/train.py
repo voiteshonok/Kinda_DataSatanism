@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 from typing import List
+import matplotlib.pyplot as plt
 
 from model import VAE
 
@@ -20,8 +21,8 @@ test_dataset = datasets.MNIST("../data", train=False, transform=transform)
 
 BATCH_SIZE = 128
 LR = 1e-3
-EPOCHS = 10
-KLD_WEIGHT = 0.01
+EPOCHS = 50
+KLD_WEIGHT = 100
 
 
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE)
@@ -69,7 +70,7 @@ def test(model, device, test_loader):
     )
 
 
-model = VAE(1, 28).to(device)
+model = VAE(1, 10).to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 for epoch in range(EPOCHS):
@@ -77,3 +78,19 @@ for epoch in range(EPOCHS):
     test(model, device, test_loader)
 
     torch.save(model, "./model.pth")
+
+    k = 3
+    data = model.sample(k, device)
+    fig, axes = plt.subplots(1, k, figsize=(10, 40))
+    for i in range(k):
+        axes[i].imshow(
+            data[i, :, :, :]
+            .permute(1, 2, 0)
+            .cpu()
+            .detach()
+            .squeeze(0)
+            .squeeze(2)
+            .numpy(),
+            cmap="gray",
+        )
+    plt.show()

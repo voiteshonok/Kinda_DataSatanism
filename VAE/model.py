@@ -13,7 +13,7 @@ class VAE(nn.Module):
 
         self.latent_dim = latent_dim
 
-        self.hidden_dims = [16, 32, 64] if hidden_dims is None else hidden_dims
+        self.hidden_dims = [16, 32, 64, 128] if hidden_dims is None else hidden_dims
         hidden_dims = self.hidden_dims[::]
 
         # building encoder
@@ -77,7 +77,7 @@ class VAE(nn.Module):
             nn.BatchNorm2d(hidden_dims[-1]),
             nn.LeakyReLU(),
             nn.Conv2d(hidden_dims[-1], out_channels=1, kernel_size=3, padding=0),
-            nn.Tanh(),
+            nn.Sigmoid(),
         )
 
     def encode(self, input: torch.Tensor) -> List[torch.Tensor]:
@@ -132,12 +132,14 @@ class VAE(nn.Module):
         input: torch.Tensor,
         mu: torch.Tensor,
         log_var: torch.Tensor,
-        kld_weight: float
+        kld_weight: float = 1.0,
     ) -> dict:
         """
         Computes the VAE loss function.
         """
-        rec_loss = F.mse_loss(recons, input)
+        rec_loss = F.binary_cross_entropy(
+            recons, input, reduction="sum"
+        )  # F.mse_loss(recons, input)
         kld_loss = torch.mean(
             -0.5 * torch.sum(1 + log_var - mu**2 - log_var.exp(), dim=1), dim=0
         )
