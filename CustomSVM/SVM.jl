@@ -16,45 +16,44 @@ module svm
     Base.@kwdef mutable struct SVM
         lr::Float32 = 1e-3
         epochs::Int32=150
-        lmbd::Float32 = 1e-4
+        lmbd::Float32 = 1e-2
         kernel_function = linear_kernel
         betas=nothing
         bias=nothing
         X=nothing
     end
 
-    function predict(x, betas, bias)
-        return linear_kernel(x, x) * transpose(betas) .+ bias 
+    function predict(x, svm)
+        return linear_kernel(x, x) * transpose(svm.betas) .+ svm.bias 
     end
 
     function hinge_loss(scores, labels)
-        return mean(relu(ones(size(scores)) .- dot(scores, labels))) # должны быть только не ноль но есть релу
+        return mean(relu(ones(size(scores)) .- dot(scores, labels)))
     end
 
-    function loss(x, y, betas, bias)
-        preds = predict(x, betas, bias)
-        return 0.01 * sum(betas * transpose(betas)) + hinge_loss(preds, y) # убрал K??
+    function loss(x, y, svm)
+        preds = predict(x, svm)
+        return svm.lmbd * sum(svm.betas * transpose(svm.betas)) + hinge_loss(preds, y)
     end
 
     function fit(svm, X, Y)
-        betas = rand(1, size(X, 1))
-        bias = rand(1)
+        svm.X = X
+        svm.betas = rand(1, size(X, 1))
+        svm.bias = rand(1)
 
         opt = Flux.Adam(svm.lr)
         for epoch in 1:svm.epochs
-            θ = Flux.params(betas, bias)
-            gs = gradient(() -> loss(X, Y, betas, bias), θ)
-            for p in (betas, bias)
+            θ = Flux.params(svm.betas, svm.bias)
+            gs = gradient(() -> loss(X, Y, svm), θ)
+            for p in (svm.betas, svm.bias)
                 update!(opt, p, gs[p])
             end
         end
-        svm.betas = betas
-        svm.bias = bias
-        svm.X = X
+    
         return svm
     end
 
-    function predict(svm, X)
+    function predict_score(svm, X)
         betas = svm.betas
         bias = svm.bias
         svm.kernel_function(svm.X, X) * transpose(betas) .+ bias
